@@ -19,11 +19,19 @@ import com.example.antiprocrastination.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
-    var notificationsEnabled  by remember { mutableStateOf(true) }
-    var reminderMinutesBefore by remember { mutableStateOf(30) }
-    var youtubeLimitMin       by remember { mutableStateOf(60) }
-    var tiktokLimitMin        by remember { mutableStateOf(30) }
+fun SettingsScreen(viewModel: com.example.antiprocrastination.viewmodel.AppViewModel, navController: NavController) {
+    val notificationsEnabled  by viewModel.notificationsEnabled.collectAsState()
+    val reminderMinutesBefore by viewModel.reminderMinutesBefore.collectAsState()
+    val youtubeLimitMin       by viewModel.youtubeLimitMin.collectAsState()
+    val tiktokLimitMin        by viewModel.tiktokLimitMin.collectAsState()
+    val scanInterval          by viewModel.monitoringInterval.collectAsState()
+    val appUsages             by viewModel.appUsages.collectAsState()
+    val learnedDistractions   by viewModel.learnedDistractions.collectAsState()
+
+    // Tomamos las 3 más usadas
+    val topApps = remember(appUsages) {
+        appUsages.sortedByDescending { it.usageMinutes }.take(3)
+    }
 
     Scaffold(
         topBar = {
@@ -60,14 +68,14 @@ fun SettingsScreen(navController: NavController) {
                     label    = "Enable notifications",
                     subLabel = "Get alerted when you exceed app limits",
                     checked  = notificationsEnabled,
-                    onToggle = { notificationsEnabled = it }
+                    onToggle = { viewModel.setNotificationsEnabled(it) }
                 )
                 if (notificationsEnabled) {
                     StepperSettingRow(
                         label    = "Reminder before due date",
                         subLabel = "${reminderMinutesBefore} min before",
-                        onMinus  = { if (reminderMinutesBefore > 10) reminderMinutesBefore -= 10 },
-                        onPlus   = { reminderMinutesBefore += 10 },
+                        onMinus  = { if (reminderMinutesBefore > 10) viewModel.setReminderMinutesBefore(reminderMinutesBefore - 10) },
+                        onPlus   = { viewModel.setReminderMinutesBefore(reminderMinutesBefore + 10) },
                         value    = "${reminderMinutesBefore}m"
                     )
                 }
@@ -76,25 +84,78 @@ fun SettingsScreen(navController: NavController) {
             // ── App limits ────────────────────────────────────────────────────
             SettingsSection(title = "App Time Limits", icon = Icons.Filled.Timelapse) {
                 StepperSettingRow(
-                    label    = "YouTube",
-                    subLabel = "Daily limit",
-                    onMinus  = { if (youtubeLimitMin > 15) youtubeLimitMin -= 15 },
-                    onPlus   = { youtubeLimitMin += 15 },
-                    value    = "${youtubeLimitMin}m"
+                    label    = "Intervalo de monitoreo",
+                    subLabel = "Frecuencia de revisión (mín 1m)",
+                    onMinus  = { if (scanInterval > 1) viewModel.setMonitoringInterval(scanInterval - 1) },
+                    onPlus   = { if (scanInterval < 60) viewModel.setMonitoringInterval(scanInterval + 1) },
+                    value    = "${scanInterval}m"
                 )
-                HorizontalDivider(color = SurfaceVar)
-                StepperSettingRow(
-                    label    = "TikTok",
-                    subLabel = "Daily limit",
-                    onMinus  = { if (tiktokLimitMin > 15) tiktokLimitMin -= 15 },
-                    onPlus   = { tiktokLimitMin += 15 },
-                    value    = "${tiktokLimitMin}m"
-                )
+                
+                if (topApps.isNotEmpty()) {
+                    Text(
+                        "Top Apps Usadas",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    
+                    topApps.forEachIndexed { index, app ->
+                        StepperSettingRow(
+                            label    = app.appName,
+                            subLabel = "Límite diario (Uso actual: ${app.usageMinutes}m)",
+                            onMinus  = { if (app.limitMinutes > 5) viewModel.setAppLimit(app.packageName, app.limitMinutes - 5) },
+                            onPlus   = { viewModel.setAppLimit(app.packageName, app.limitMinutes + 5) },
+                            value    = "${app.limitMinutes}m"
+                        )
+                        if (index < topApps.size - 1) {
+                            HorizontalDivider(color = SurfaceVar, modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+                    }
+                } else {
+                    Text(
+                        "No se detectaron apps de distracción hoy",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            // ── Learned Distractions ──────────────────────────────────────────
+            SettingsSection(title = "Learned Distractions", icon = Icons.Filled.Psychology) {
+                if (learnedDistractions.isEmpty()) {
+                    Text(
+                        "No learned apps yet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                } else {
+                    learnedDistractions.forEachIndexed { index, app ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(app.appName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = Muted)
+                            }
+                            IconButton(onClick = { viewModel.removeDistraction(app) }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color.Red.copy(alpha = 0.7f))
+                            }
+                        }
+                        if (index < learnedDistractions.size - 1) {
+                            HorizontalDivider(color = SurfaceVar, modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+                    }
+                }
             }
 
             // ── About ─────────────────────────────────────────────────────────
             SettingsSection(title = "About", icon = Icons.Filled.Info) {
-                InfoRow("Version",  "1.0.0 – Sprint 1")
+                InfoRow("Version",  "1.0.1 – Learning System")
                 HorizontalDivider(color = SurfaceVar)
                 InfoRow("Authors",  "O. González · J. Bernal")
                 HorizontalDivider(color = SurfaceVar)

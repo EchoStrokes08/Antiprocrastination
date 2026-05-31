@@ -180,7 +180,7 @@ fun NewTaskScreen(viewModel: AppViewModel, navController: NavController) {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         selectedDate = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.systemDefault()).toLocalDate()
+                            .atZone(ZoneId.of("UTC")).toLocalDate()
                         dateError = false
                     }
                     showDatePicker = false

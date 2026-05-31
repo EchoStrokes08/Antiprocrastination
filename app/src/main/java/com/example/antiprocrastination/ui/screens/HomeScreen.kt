@@ -40,6 +40,11 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
     val appUsages by viewModel.appUsages.collectAsState()
     val totalMinutes = appUsages.sumOf { it.usageMinutes }.coerceAtLeast(1)
 
+    // Actualizar datos al entrar a la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.refreshUsageStats()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

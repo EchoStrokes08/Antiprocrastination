@@ -25,9 +25,18 @@ import com.example.antiprocrastination.viewmodel.AppViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(viewModel: AppViewModel) {
-    val tasks         by viewModel.tasks.collectAsState()
+    val tasks          by viewModel.tasks.collectAsState()
+    val appUsages      by viewModel.appUsages.collectAsState()
+    val weeklyStats    by viewModel.weeklyStats.collectAsState()
+    val pomodoroState  by viewModel.pomodoro.collectAsState()
+    
     val completedCount = tasks.count { it.completed }
     val pendingCount   = tasks.count { !it.completed }
+
+    // Actualizar datos al entrar a la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.refreshUsageStats()
+    }
 
     Scaffold(
         topBar = {
@@ -75,7 +84,7 @@ fun StatsScreen(viewModel: AppViewModel) {
                     modifier  = Modifier.weight(1f),
                     icon      = Icons.Filled.Timer,
                     iconColor = PrimaryLight,
-                    value     = "${viewModel.pomodoro.value.completedSessions}",
+                    value     = "${pomodoroState.completedSessions}",
                     label     = "Pomodoros"
                 )
             }
@@ -100,7 +109,7 @@ fun StatsScreen(viewModel: AppViewModel) {
                     }
                     Spacer(Modifier.height(12.dp))
                     WeeklyBarChart(
-                        stats    = viewModel.weeklyStats,
+                        stats    = weeklyStats,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
@@ -109,7 +118,6 @@ fun StatsScreen(viewModel: AppViewModel) {
             }
 
             // ── App usage breakdown ───────────────────────────────────────────
-            val appUsages by viewModel.appUsages.collectAsState()
             Card(
                 modifier  = Modifier.fillMaxWidth(),
                 shape     = RoundedCornerShape(20.dp),

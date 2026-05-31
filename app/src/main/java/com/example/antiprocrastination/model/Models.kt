@@ -1,10 +1,15 @@
 package com.example.antiprocrastination.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverter
 import java.time.LocalDate
 
 // ── Task ─────────────────────────────────────────────────────────────────────
+@Entity(tableName = "tasks")
 data class Task(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val name: String,
     val dueDate: LocalDate,
     val description: String = "",
@@ -19,7 +24,8 @@ data class AppUsageInfo(
     val appName: String,
     val packageName: String,
     val usageMinutes: Int,
-    val limitMinutes: Int = 60
+    val limitMinutes: Int = 60,
+    val lastTimeUsed: Long = 0
 ) {
     val usagePercent: Float get() = usageMinutes.toFloat() / limitMinutes.coerceAtLeast(1)
     val isOverLimit: Boolean get() = usageMinutes > limitMinutes
@@ -47,3 +53,25 @@ data class DailyStats(
     val productiveMinutes: Int,
     val distractionMinutes: Int
 )
+
+// ── Learned Distractions ──────────────────────────────────────────────────────
+@Entity(tableName = "distraction_apps")
+data class DistractionApp(
+    @PrimaryKey
+    val packageName: String,
+    val appName: String,
+    val detectedDate: Long = System.currentTimeMillis()
+)
+
+// Room Type Converters for LocalDate
+class Converters {
+    @TypeConverter
+    fun fromTimestamp(value: String?): LocalDate? {
+        return value?.let { LocalDate.parse(it) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: LocalDate?): String? {
+        return date?.toString()
+    }
+}
