@@ -85,7 +85,7 @@ class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                     val nextTask = pendingTasks.first()
                     notificationHelper.showInteractiveNotification(
                         "Próximo Objetivo",
-                        "Recuerdas la tarea: '${nextTask.name}'. ¡Ánimo, tú puedes, vamos por un bono de productividad! ",
+                        "Recuerdas la tarea: '${nextTask.name}'. ¡Ánimo, tú puedes, vamos por un git commit -mbono de productividad! ",
                         pendingTasks.size
                     )
                 }
