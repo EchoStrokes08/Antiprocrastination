@@ -99,8 +99,11 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                             modifier    = Modifier.size(180.dp)
                         )
                         Spacer(Modifier.height(8.dp))
+                        val h = totalMinutes / 60
+                        val m = totalMinutes % 60
+                        val totalFormatted = if (h > 0) "${h}h ${m}m" else "${m}m"
                         Text(
-                            "Today: ${totalMinutes}m total screen time",
+                            "Today: $totalFormatted total screen time",
                             style = MaterialTheme.typography.bodySmall,
                             color = Muted
                         )
@@ -225,7 +228,7 @@ fun AppUsageRow(
                         color      = OnSurface
                     )
                     Text(
-                        "${app.usageMinutes}m",
+                        app.timeFormatted,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (app.isOverLimit) Warning else Muted,
                         fontWeight = if (app.isOverLimit) FontWeight.SemiBold else FontWeight.Normal

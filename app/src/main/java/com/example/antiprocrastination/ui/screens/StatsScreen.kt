@@ -140,11 +140,11 @@ fun StatsScreen(viewModel: AppViewModel) {
                                 Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = OnSurface)
-                            Text("${app.usageMinutes}m",
+                            Text(app.timeFormatted,
                                 style      = MaterialTheme.typography.bodySmall,
                                 color      = if (app.isOverLimit) Warning else Muted,
                                 fontWeight = if (app.isOverLimit) FontWeight.Bold else FontWeight.Normal,
-                                modifier   = Modifier.width(40.dp),
+                                modifier   = Modifier.width(60.dp),
                                 textAlign  = TextAlign.End)
                             Spacer(Modifier.width(8.dp))
                             LinearProgressIndicator(

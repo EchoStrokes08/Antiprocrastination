@@ -13,7 +13,8 @@ data class Task(
     val name: String,
     val dueDate: LocalDate,
     val description: String = "",
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val completedDate: LocalDate? = null
 ) {
     /** Days remaining until due date (negative = overdue) */
     val daysRemaining: Long get() = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), dueDate)
@@ -29,6 +30,13 @@ data class AppUsageInfo(
 ) {
     val usagePercent: Float get() = usageMinutes.toFloat() / limitMinutes.coerceAtLeast(1)
     val isOverLimit: Boolean get() = usageMinutes > limitMinutes
+
+    /** Formato amigable de tiempo (ej: 1h 20m o 45m) */
+    val timeFormatted: String get() {
+        val h = usageMinutes / 60
+        val m = usageMinutes % 60
+        return if (h > 0) "${h}h ${m}m" else "${m}m"
+    }
 }
 
 // ── Pomodoro State ─────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ import com.example.antiprocrastination.R
 
 class NotificationHelper(private val context: Context) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    private val CHANNEL_ID = "antiprocrastination_channel"
+    private val CHANNEL_ID = "antiprocrastination_reminders_v2"
 
     init {
         createNotificationChannel()
@@ -22,22 +22,27 @@ class NotificationHelper(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Alertas de Procrastinación",
-                NotificationManager.IMPORTANCE_HIGH
+                "Recordatorios de Productividad",
+                NotificationManager.IMPORTANCE_HIGH // Necesario para que sea flotante
             ).apply {
-                description = "Notificaciones para recordarte tus tareas pendientes"
+                description = "Breves avisos para mantener el enfoque"
+                enableLights(true)
+                enableVibration(false) // Sin vibración para ser menos intrusiva
+                setShowBadge(false)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
-    // Notificación Tipo 1: Sutil en la barra
+    // Notificación Tipo 1: Notificación estándar
     fun showSimpleNotification(title: String, message: String) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(title)
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
             .setAutoCancel(true)
             .build()
 
@@ -52,13 +57,13 @@ class NotificationHelper(private val context: Context) {
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
-            .setContentText("$message - Tienes $pendingTasksCount tareas pendientes.")
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(pendingIntent, true) // Esto la hace "flotante" (Heads-up)
-            .addAction(android.R.drawable.ic_menu_view, "Ver Tareas", pendingIntent)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setOnlyAlertOnce(true) // No repetir sonido si ya está visible
+            .addAction(android.R.drawable.ic_menu_view, "Abrir App", pendingIntent)
             .setAutoCancel(true)
             .build()
 

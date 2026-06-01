@@ -9,6 +9,7 @@ import com.example.antiprocrastination.model.AppDatabase
 import com.example.antiprocrastination.data.SettingsManager
 import com.example.antiprocrastination.notifications.NotificationHelper
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
 
 class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -52,37 +53,42 @@ class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                 )
                 Log.d("Antiprocrastination", "Nueva app de distracción guardada: $currentPackage")
             }
-            val distractionApps = usageTracker.getDistractionAppsUsage()
-            val currentAppUsage = distractionApps.find { it.packageName == currentPackage }
-            
             // Usamos el nombre amigable centralizado
             val appName = usageTracker.getAppName(currentPackage)
-            val minutes = currentAppUsage?.usageMinutes ?: 0
+            val sessionMinutes = usageTracker.getActiveSessionMinutes(currentPackage)
 
-            // 4. Obtener tareas pendientes
+            // 1. Siempre mostrar la notificación de tiempo en la app (Notificación Tipo 1)
+            notificationHelper.showSimpleNotification(
+                "¡Alerta de Enfoque!",
+                "Llevas $sessionMinutes min en $appName. ¡Cuidado con la distracción!"
+            )
+
+            // 2. Obtener tareas pendientes para la segunda notificación (Notificación Tipo 2)
             val tasksFlow = database.taskDao().getAllTasks()
             val allTasks = tasksFlow.first()
             val pendingTasks = allTasks
                 .filter { !it.completed }
                 .sortedBy { it.dueDate }
             
-            Log.d("Antiprocrastination", "Tareas pendientes encontradas: ${pendingTasks.size}")
-            
             if (pendingTasks.isNotEmpty()) {
-                val nextTask = pendingTasks.first()
-                
-                notificationHelper.showSimpleNotification(
-                    "¡Momento de enfoque!", 
-                    "Estás usando $appName ($minutes min). Recuerda que tienes pendiente: ${nextTask.name}"
-                )
-                
-                notificationHelper.showInteractiveNotification(
-                    "Pausa de productividad",
-                    "Tienes ${pendingTasks.size} tareas esperando. ¿Dejamos $appName por ahora?",
-                    pendingTasks.size
-                )
-            } else {
-                Log.d("Antiprocrastination", "No hay tareas pendientes, no se envía notificación")
+                val today = LocalDate.now()
+                val overdueTasks = pendingTasks.filter { it.dueDate.isBefore(today) }
+                val overdueCount = overdueTasks.size
+
+                if (overdueCount > 0) {
+                    notificationHelper.showInteractiveNotification(
+                        "Tareas Vencidas",
+                        "Tienes $overdueCount tareas atrasadas. ¿Volvemos al trabajo?",
+                        pendingTasks.size
+                    )
+                } else {
+                    val nextTask = pendingTasks.first()
+                    notificationHelper.showInteractiveNotification(
+                        "Próximo Objetivo",
+                        "Recuerdas la tarea: '${nextTask.name}'. ¡Ánimo, tú puedes, vamos por un bono de productividad! ",
+                        pendingTasks.size
+                    )
+                }
             }
         }
 

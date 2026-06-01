@@ -7,6 +7,11 @@ import android.content.pm.PackageManager
 import android.util.Log
 import com.example.antiprocrastination.model.AppUsageInfo
 import com.example.antiprocrastination.model.DailyStats
+import com.example.antiprocrastination.model.Task
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.*
 
 /**
@@ -147,8 +152,9 @@ class UsageTracker(private val context: Context) {
 
     /**
      * Devuelve información de uso para todas las aplicaciones identificadas como distracciones en el día actual.
+     * Utiliza queryUsageStats como base y lo complementa con eventos recientes para máxima precisión.
      */
-    fun getDistractionAppsUsage(): List<AppUsageInfo> {
+    fun getDistractionAppsUsage(learnedPackages: Set<String> = emptySet()): List<AppUsageInfo> {
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -157,23 +163,55 @@ class UsageTracker(private val context: Context) {
             set(Calendar.MILLISECOND, 0)
         }
 
+        val startOfDay = calendar.timeInMillis
+        val now = System.currentTimeMillis()
+
+        // 1. Obtener estadísticas base (el sistema las agrega periódicamente)
         val stats = usageStatsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_DAILY,
-            calendar.timeInMillis,
-            System.currentTimeMillis()
+            startOfDay,
+            now
         )
 
         val consolidatedStats = mutableMapOf<String, Long>()
         stats.forEach {
             if (it.totalTimeInForeground > 0) {
-                consolidatedStats[it.packageName] = (consolidatedStats[it.packageName] ?: 0) + it.totalTimeInForeground
+                // Nos quedamos con el valor máximo reportado para el paquete hoy
+                val current = consolidatedStats[it.packageName] ?: 0L
+                if (it.totalTimeInForeground > current) {
+                    consolidatedStats[it.packageName] = it.totalTimeInForeground
+                }
+            }
+        }
+
+        // 2. CORRECCIÓN DE PRECISIÓN: Si una app está abierta AHORA, queryUsageStats podría estar desactualizado.
+        // Verificamos los eventos de los últimos 30 minutos para ver si hay una sesión activa.
+        val usageEvents = usageStatsManager.queryEvents(now - 1000 * 60 * 30, now)
+        val event = android.app.usage.UsageEvents.Event()
+        val lastEvents = mutableMapOf<String, Int>()
+        val lastEventTime = mutableMapOf<String, Long>()
+
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            lastEvents[event.packageName] = event.eventType
+            lastEventTime[event.packageName] = event.timeStamp
+        }
+
+        // Si el último evento de una app fue RESUMED, sumamos el tiempo transcurrido desde entonces
+        lastEvents.forEach { (pkg, type) ->
+            if (type == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                val startTime = lastEventTime[pkg] ?: now
+                val extraTime = now - startTime
+                if (extraTime > 0) {
+                    consolidatedStats[pkg] = (consolidatedStats[pkg] ?: 0L) + extraTime
+                }
             }
         }
 
         return consolidatedStats.filter { (packageName, _) ->
             packageName != context.packageName && 
             packageName !in productivePackages &&
-            isDistraction(packageName) 
+            (isDistraction(packageName) || packageName in learnedPackages)
         }
             .map { (packageName, totalTime) ->
                 AppUsageInfo(
@@ -218,54 +256,171 @@ class UsageTracker(private val context: Context) {
     }
 
     /**
-     * Agrega el uso de distracciones frente al productivo para los últimos 7 días.
+     * Obtiene los minutos exactos que una aplicación ha estado en primer plano desde su última activación
+     * (o el total del día si es más relevante para el contexto de la notificación).
+     * @param packageName Nombre del paquete.
+     * @return Minutos de uso en la sesión actual o reciente.
      */
-    fun getWeeklyStats(): List<DailyStats> {
+    fun getActiveSessionMinutes(packageName: String): Int {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - 1000 * 60 * 60 // Mirar la última hora
+        
+        val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+        val event = android.app.usage.UsageEvents.Event()
+        
+        var lastResumedTime = 0L
+        var totalSessionTime = 0L
+        
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            if (event.packageName == packageName) {
+                when (event.eventType) {
+                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        lastResumedTime = event.timeStamp
+                    }
+                    android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
+                    android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
+                        if (lastResumedTime != 0L) {
+                            totalSessionTime += (event.timeStamp - lastResumedTime)
+                            lastResumedTime = 0L
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Si sigue en primer plano (no hubo evento de pausa/parada después del último RESUMED)
+        if (lastResumedTime != 0L) {
+            totalSessionTime += (endTime - lastResumedTime)
+        }
+        
+        return (totalSessionTime / 60000).toInt().coerceAtLeast(1)
+    }
+
+    /**
+     * Agrega el uso de distracciones frente al productivo para la semana actual (Dom-Sab).
+     * Muestra valores reales para días pasados y hoy, y 0 para días futuros.
+     * Incluye bonificaciones por tareas completadas y penalizaciones por tareas vencidas.
+     */
+    fun getWeeklyStats(tasks: List<Task>, learnedPackages: Set<String>): List<DailyStats> {
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val result = mutableListOf<DailyStats>()
         
-        val calendar = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -6)
+        val now = System.currentTimeMillis()
+        val todayStart = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
 
         val days = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
         for (i in 0..6) {
             val startOfDay = calendar.timeInMillis
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            val dateOfBar = newjavaTimeLocalDate(startOfDay)
+            val isToday = startOfDay == todayStart
+            val isFuture = startOfDay > todayStart
             
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-            val endOfDay = calendar.timeInMillis
-
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startOfDay,
-                endOfDay
-            )
-
             var distractionMin = 0
-            var totalMin = 0
+            var productiveMin = 0
 
-            stats.forEach {
-                val mins = (it.totalTimeInForeground / 60000).toInt()
-                if (mins > 0) {
-                    if (isDistraction(it.packageName)) {
-                        distractionMin += mins
+            if (!isFuture) {
+                // 1. Estadísticas de uso de aplicaciones
+                val endOfDay = startOfDay + 24 * 60 * 60 * 1000
+                val stats = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    startOfDay,
+                    if (isToday) now else endOfDay
+                )
+
+                val consolidatedStats = mutableMapOf<String, Long>()
+                stats.forEach {
+                    if (it.totalTimeInForeground > 0) {
+                        val current = consolidatedStats[it.packageName] ?: 0L
+                        if (it.totalTimeInForeground > current) {
+                            consolidatedStats[it.packageName] = it.totalTimeInForeground
+                        }
                     }
-                    totalMin += mins
+                }
+
+                if (isToday) {
+                    val usageEvents = usageStatsManager.queryEvents(now - 1000 * 60 * 30, now)
+                    val event = android.app.usage.UsageEvents.Event()
+                    val lastEvents = mutableMapOf<String, Int>()
+                    val lastEventTime = mutableMapOf<String, Long>()
+
+                    while (usageEvents.hasNextEvent()) {
+                        usageEvents.getNextEvent(event)
+                        lastEvents[event.packageName] = event.eventType
+                        lastEventTime[event.packageName] = event.timeStamp
+                    }
+
+                    lastEvents.forEach { (pkg, type) ->
+                        if (type == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                            val startTime = lastEventTime[pkg] ?: now
+                            val extraTime = now - startTime
+                            if (extraTime > 0) {
+                                consolidatedStats[pkg] = (consolidatedStats[pkg] ?: 0L) + extraTime
+                            }
+                        }
+                    }
+                }
+
+                consolidatedStats.forEach { (pkg, time) ->
+                    val mins = (time / 60000).toInt()
+                    if (mins > 0) {
+                        if (isDistraction(pkg) || pkg in learnedPackages) {
+                            distractionMin += mins
+                        } else if (pkg != context.packageName) {
+                            productiveMin += mins
+                        }
+                    }
+                }
+
+                // 2. Bonificación por tareas completadas
+                // "entre mas cerca la fecha menos porcentaje... entre mas lejos mejor"
+                tasks.filter { it.completed && it.completedDate == dateOfBar }.forEach { task ->
+                    val daysAdvance = ChronoUnit.DAYS.between(dateOfBar, task.dueDate).coerceAtLeast(0)
+                    // Escala 0 a 1: Si es para hoy es 0.1, si es para dentro de 7+ días es 1.0
+                    val bonusFactor = (0.1f + (daysAdvance.toFloat() / 7f)).coerceIn(0.1f, 1.0f)
+                    productiveMin += (bonusFactor * 60).toInt() // 1.0 = 60 min extra de productividad
+                }
+
+                // 3. Penalización por tareas vencidas (vencían ayer o antes y no se hicieron)
+                // "si hay una tarea que no se era para hoy y no se marco como hecha, que mañana se sume como un porcentaje fijo de Distraccion"
+                val overdueTasks = tasks.filter { 
+                    it.dueDate.isBefore(dateOfBar) && (!it.completed || (it.completedDate != null && it.completedDate?.isAfter(dateOfBar) == true))
+                }
+                if (overdueTasks.isNotEmpty()) {
+                    distractionMin += (overdueTasks.size * 20) // 20 min de penalización por cada tarea vencida
                 }
             }
 
             result.add(DailyStats(
-                day = days[dayOfWeek - 1],
-                productiveMinutes = (totalMin - distractionMin).coerceAtLeast(0),
+                day = days[i],
+                productiveMinutes = productiveMin,
                 distractionMinutes = distractionMin
             ))
+            
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
         
         return result
+    }
+
+    private fun newjavaTimeLocalDate(millis: Long): LocalDate {
+        return Instant.ofEpochMilli(millis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
     }
 }

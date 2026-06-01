@@ -87,6 +87,7 @@ class AppViewModel(
     fun addTask(name: String, dueDate: LocalDate, description: String) {
         viewModelScope.launch {
             taskDao.insertTask(Task(name = name, dueDate = dueDate, description = description))
+            refreshUsageStats()
         }
     }
 
@@ -95,7 +96,12 @@ class AppViewModel(
         viewModelScope.launch {
             val task = tasks.value.find { it.id == id }
             task?.let {
-                taskDao.updateTask(it.copy(completed = !it.completed))
+                val isCompleting = !it.completed
+                taskDao.updateTask(it.copy(
+                    completed = isCompleting,
+                    completedDate = if (isCompleting) LocalDate.now() else null
+                ))
+                refreshUsageStats()
             }
         }
     }
@@ -106,6 +112,7 @@ class AppViewModel(
             val task = tasks.value.find { it.id == id }
             task?.let {
                 taskDao.deleteTask(it)
+                refreshUsageStats()
             }
         }
     }
@@ -140,12 +147,15 @@ class AppViewModel(
      */
     fun refreshUsageStats() {
         viewModelScope.launch {
+            val currentTasks = tasks.value
+            val learnedPkgs = learnedDistractions.value.map { it.packageName }.toSet()
+            
             val (usage, weekly) = withContext(Dispatchers.IO) {
-                val usageData = usageTracker.getDistractionAppsUsage().map {
+                val usageData = usageTracker.getDistractionAppsUsage(learnedPkgs).map {
                     val limit = settingsManager.getAppLimit(it.packageName)
                     it.copy(limitMinutes = limit)
                 }
-                val weeklyData = usageTracker.getWeeklyStats()
+                val weeklyData = usageTracker.getWeeklyStats(currentTasks, learnedPkgs)
                 usageData to weeklyData
             }
             _appUsages.value = usage

@@ -36,9 +36,23 @@ fun NewTaskScreen(viewModel: AppViewModel, navController: NavController) {
 
     val dateFormatter = DateTimeFormatter.ofPattern("d-MMMM-yyyy")
 
-    // Material3 DatePicker state
+    // Material3 DatePicker state con validación de fechas pasadas
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
+        initialSelectedDateMillis = System.currentTimeMillis(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // Solo permitir fechas desde hoy en adelante (comparando en UTC)
+                val todayStartMillis = LocalDate.now(ZoneId.of("UTC"))
+                    .atStartOfDay(ZoneId.of("UTC"))
+                    .toInstant()
+                    .toEpochMilli()
+                return utcTimeMillis >= todayStartMillis
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                return year >= LocalDate.now(ZoneId.of("UTC")).year
+            }
+        }
     )
 
     Scaffold(
