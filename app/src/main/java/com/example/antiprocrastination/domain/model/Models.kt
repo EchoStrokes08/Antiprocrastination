@@ -1,9 +1,10 @@
-package com.example.antiprocrastination.model
+package com.example.antiprocrastination.domain.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 // ── Task ─────────────────────────────────────────────────────────────────────
 @Entity(tableName = "tasks")
@@ -17,7 +18,7 @@ data class Task(
     val completedDate: LocalDate? = null
 ) {
     /** Days remaining until due date (negative = overdue) */
-    val daysRemaining: Long get() = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), dueDate)
+    val daysRemaining: Long get() = ChronoUnit.DAYS.between(LocalDate.now(), dueDate)
 }
 
 // ── App Usage ─────────────────────────────────────────────────────────────────

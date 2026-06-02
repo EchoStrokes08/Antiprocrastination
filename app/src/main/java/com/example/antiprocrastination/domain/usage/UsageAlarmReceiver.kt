@@ -1,4 +1,4 @@
-package com.example.antiprocrastination.usage
+package com.example.antiprocrastination.domain.usage
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -8,7 +8,7 @@ import android.content.Intent
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 
-import com.example.antiprocrastination.data.SettingsManager
+import com.example.antiprocrastination.data.SettingsManagerImpl
 
 class UsageAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -17,8 +17,8 @@ class UsageAlarmReceiver : BroadcastReceiver() {
         WorkManager.getInstance(context).enqueue(workRequest)
 
         // Re-programar usando el valor actual de SettingsManager
-        val settingsManager = SettingsManager(context)
-        val intervalMinutes = settingsManager.monitoringInterval
+        val settingsManagerImpl = SettingsManagerImpl(context)
+        val intervalMinutes = settingsManagerImpl.monitoringInterval
 
         if (intervalMinutes > 0 && intervalMinutes < 15) {
             scheduleNextAlarm(context, intervalMinutes)

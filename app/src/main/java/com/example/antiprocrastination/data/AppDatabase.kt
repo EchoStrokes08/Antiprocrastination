@@ -1,10 +1,13 @@
-package com.example.antiprocrastination.model
+package com.example.antiprocrastination.data
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.antiprocrastination.domain.model.Converters
+import com.example.antiprocrastination.domain.model.DistractionApp
+import com.example.antiprocrastination.domain.model.Task
 
 @Database(entities = [Task::class, DistractionApp::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)

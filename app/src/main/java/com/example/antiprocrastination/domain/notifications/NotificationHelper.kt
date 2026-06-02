@@ -1,4 +1,4 @@
-package com.example.antiprocrastination.notifications
+package com.example.antiprocrastination.domain.notifications
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

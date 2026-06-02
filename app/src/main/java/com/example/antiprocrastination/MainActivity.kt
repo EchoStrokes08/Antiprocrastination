@@ -25,16 +25,18 @@ import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.example.antiprocrastination.navigation.*
+import com.example.antiprocrastination.data.UsageTrackerImpl
 import com.example.antiprocrastination.ui.screens.*
 import com.example.antiprocrastination.ui.theme.AntiProcrastinationTheme
-import com.example.antiprocrastination.viewmodel.AppViewModel
-import com.example.antiprocrastination.usage.UsageWorker
-import com.example.antiprocrastination.usage.UsageAlarmReceiver
+import com.example.antiprocrastination.ui.viewmodel.AppViewModel
+import com.example.antiprocrastination.domain.usage.UsageWorker
+import com.example.antiprocrastination.domain.usage.UsageAlarmReceiver
 import java.util.concurrent.TimeUnit
 
-import com.example.antiprocrastination.model.AppDatabase
-import com.example.antiprocrastination.viewmodel.AppViewModelFactory
+import com.example.antiprocrastination.data.AppDatabase
+import com.example.antiprocrastination.ui.navigation.Routes
+import com.example.antiprocrastination.ui.navigation.bottomNavItems
+import com.example.antiprocrastination.ui.viewmodel.AppViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -54,20 +56,20 @@ class MainActivity : ComponentActivity() {
 
         // Verificar permisos de acceso a uso
         checkPermission()
-        
+
         // Solicitar permiso de notificaciones en Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        
+
         // Inicializar DB, Settings y ViewModel
         val database = AppDatabase.getDatabase(this)
-        val settingsManager = com.example.antiprocrastination.data.SettingsManager(this)
-        val usageTracker = com.example.antiprocrastination.usage.UsageTracker(this)
-        val viewModel: AppViewModel by viewModels { 
-            AppViewModelFactory(database.taskDao(), database.distractionDao(), settingsManager, usageTracker)
+        val settingsManagerImpl = com.example.antiprocrastination.data.SettingsManagerImpl(this)
+        val usageTrackerImpl = UsageTrackerImpl(this)
+        val viewModel: AppViewModel by viewModels {
+            AppViewModelFactory(database.taskDao(), database.distractionDao(), settingsManagerImpl, usageTrackerImpl)
         }
 
         // Observar cambios en el intervalo de monitoreo
@@ -135,21 +137,21 @@ class MainActivity : ComponentActivity() {
         if (minutes < 15) {
             // Cancelar WorkManager si existe
             WorkManager.getInstance(this).cancelUniqueWork("UsageTrackingWork")
-            
+
             // Programar Alarma Exacta
             val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val intent = Intent(this, UsageAlarmReceiver::class.java).apply {
                 putExtra("interval_minutes", minutes)
             }
             val pendingIntent = PendingIntent.getBroadcast(
-                this, 
-                0, 
-                intent, 
+                this,
+                0,
+                intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             val triggerTime = System.currentTimeMillis() + (minutes * 60 * 1000)
-            
+
             try {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
@@ -168,7 +170,7 @@ class MainActivity : ComponentActivity() {
                 val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
                 alarmManager.cancel(it)
             }
-            
+
             scheduleUsageWorker(minutes)
         }
     }

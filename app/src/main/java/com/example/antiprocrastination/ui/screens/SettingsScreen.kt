@@ -16,10 +16,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.antiprocrastination.ui.theme.*
+import com.example.antiprocrastination.ui.viewmodel.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: com.example.antiprocrastination.viewmodel.AppViewModel, navController: NavController) {
+fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
     val notificationsEnabled  by viewModel.notificationsEnabled.collectAsState()
     val reminderMinutesBefore by viewModel.reminderMinutesBefore.collectAsState()
     val youtubeLimitMin       by viewModel.youtubeLimitMin.collectAsState()

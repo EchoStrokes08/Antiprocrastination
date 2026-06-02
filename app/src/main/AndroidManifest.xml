@@ -27,7 +27,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Antiprocrastination">
 
-        <receiver android:name=".usage.UsageAlarmReceiver" android:exported="false" />
+        <receiver android:name=".domain.usage.UsageAlarmReceiver" android:exported="false" />
 
         <activity
             android:name=".MainActivity"

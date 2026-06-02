@@ -1,6 +1,5 @@
 package com.example.antiprocrastination.ui.screens
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
-import com.example.antiprocrastination.model.PomodoroPhase
+import com.example.antiprocrastination.domain.model.PomodoroPhase
 import com.example.antiprocrastination.ui.theme.*
-import com.example.antiprocrastination.viewmodel.AppViewModel
+import com.example.antiprocrastination.ui.viewmodel.AppViewModel
 import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class)

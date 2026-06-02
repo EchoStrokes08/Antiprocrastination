@@ -1,10 +1,17 @@
-package com.example.antiprocrastination.viewmodel
+package com.example.antiprocrastination.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.antiprocrastination.data.SettingsManager
-import com.example.antiprocrastination.model.*
-import com.example.antiprocrastination.usage.UsageTracker
+import com.example.antiprocrastination.domain.repository.SettingsRepository
+import com.example.antiprocrastination.domain.model.AppUsageInfo
+import com.example.antiprocrastination.domain.model.DailyStats
+import com.example.antiprocrastination.domain.model.DistractionApp
+import com.example.antiprocrastination.data.DistractionDao
+import com.example.antiprocrastination.domain.model.PomodoroPhase
+import com.example.antiprocrastination.domain.model.PomodoroState
+import com.example.antiprocrastination.domain.model.Task
+import com.example.antiprocrastination.data.TaskDao
+import com.example.antiprocrastination.domain.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -20,60 +27,60 @@ import java.time.LocalDate
 class AppViewModel(
     private val taskDao: TaskDao,
     private val distractionDao: DistractionDao,
-    private val settingsManager: SettingsManager,
-    private val usageTracker: UsageTracker
+    private val settingsRepository: SettingsRepository,
+    private val usageRepository: UsageRepository
 ) : ViewModel() {
 
     // ── Configuración (Settings) ──────────────────────────────────────────────
 
-    private val _monitoringInterval = MutableStateFlow(settingsManager.monitoringInterval)
+    private val _monitoringInterval = MutableStateFlow(settingsRepository.monitoringInterval)
     /** Intervalo de monitoreo en minutos */
     val monitoringInterval: StateFlow<Int> = _monitoringInterval.asStateFlow()
 
     fun setMonitoringInterval(minutes: Int) {
         _monitoringInterval.value = minutes
-        settingsManager.monitoringInterval = minutes
+        settingsRepository.monitoringInterval = minutes
     }
 
-    private val _notificationsEnabled = MutableStateFlow(settingsManager.notificationsEnabled)
+    private val _notificationsEnabled = MutableStateFlow(settingsRepository.notificationsEnabled)
     /** Indica si las notificaciones están habilitadas */
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
-        settingsManager.notificationsEnabled = enabled
+        settingsRepository.notificationsEnabled = enabled
     }
 
-    private val _reminderMinutesBefore = MutableStateFlow(settingsManager.reminderMinutesBefore)
+    private val _reminderMinutesBefore = MutableStateFlow(settingsRepository.reminderMinutesBefore)
     /** Minutos de recordatorio antes de una tarea */
     val reminderMinutesBefore: StateFlow<Int> = _reminderMinutesBefore.asStateFlow()
 
     fun setReminderMinutesBefore(minutes: Int) {
         _reminderMinutesBefore.value = minutes
-        settingsManager.reminderMinutesBefore = minutes
+        settingsRepository.reminderMinutesBefore = minutes
     }
 
-    private val _youtubeLimitMin = MutableStateFlow(settingsManager.youtubeLimitMin)
+    private val _youtubeLimitMin = MutableStateFlow(settingsRepository.youtubeLimitMin)
     /** Límite diario para YouTube en minutos */
     val youtubeLimitMin: StateFlow<Int> = _youtubeLimitMin.asStateFlow()
 
     fun setYoutubeLimitMin(minutes: Int) {
         _youtubeLimitMin.value = minutes
-        settingsManager.youtubeLimitMin = minutes
+        settingsRepository.youtubeLimitMin = minutes
     }
 
-    private val _tiktokLimitMin = MutableStateFlow(settingsManager.tiktokLimitMin)
+    private val _tiktokLimitMin = MutableStateFlow(settingsRepository.tiktokLimitMin)
     /** Límite diario para TikTok en minutos */
     val tiktokLimitMin: StateFlow<Int> = _tiktokLimitMin.asStateFlow()
 
     fun setTiktokLimitMin(minutes: Int) {
         _tiktokLimitMin.value = minutes
-        settingsManager.tiktokLimitMin = minutes
+        settingsRepository.tiktokLimitMin = minutes
     }
 
     /** Establece un límite de tiempo para una aplicación específica */
     fun setAppLimit(packageName: String, minutes: Int) {
-        settingsManager.setAppLimit(packageName, minutes)
+        settingsRepository.setAppLimit(packageName, minutes)
         refreshUsageStats()
     }
 
@@ -151,11 +158,11 @@ class AppViewModel(
             val learnedPkgs = learnedDistractions.value.map { it.packageName }.toSet()
             
             val (usage, weekly) = withContext(Dispatchers.IO) {
-                val usageData = usageTracker.getDistractionAppsUsage(learnedPkgs).map {
-                    val limit = settingsManager.getAppLimit(it.packageName)
+                val usageData = usageRepository.getDistractionAppsUsage(learnedPkgs).map {
+                    val limit = settingsRepository.getAppLimit(it.packageName)
                     it.copy(limitMinutes = limit)
                 }
-                val weeklyData = usageTracker.getWeeklyStats(currentTasks, learnedPkgs)
+                val weeklyData = usageRepository.getWeeklyStats(currentTasks, learnedPkgs)
                 usageData to weeklyData
             }
             _appUsages.value = usage

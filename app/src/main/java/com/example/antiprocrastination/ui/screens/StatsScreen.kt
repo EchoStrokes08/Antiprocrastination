@@ -14,13 +14,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.antiprocrastination.model.DailyStats
+import com.example.antiprocrastination.domain.model.DailyStats
 import com.example.antiprocrastination.ui.theme.*
-import com.example.antiprocrastination.viewmodel.AppViewModel
+import com.example.antiprocrastination.ui.viewmodel.AppViewModel
+import com.example.antiprocrastination.ui.components.cards.StatCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +29,7 @@ fun StatsScreen(viewModel: AppViewModel) {
     val appUsages      by viewModel.appUsages.collectAsState()
     val weeklyStats    by viewModel.weeklyStats.collectAsState()
     val pomodoroState  by viewModel.pomodoro.collectAsState()
-    
+
     val completedCount = tasks.count { it.completed }
     val pendingCount   = tasks.count { !it.completed }
 
@@ -191,35 +191,6 @@ fun StatsScreen(viewModel: AppViewModel) {
     }
 }
 
-// ── Stat summary card ─────────────────────────────────────────────────────────
-@Composable
-private fun StatCard(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color,
-    value: String,
-    label: String
-) {
-    Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = CardBg),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(
-            modifier            = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold, color = OnSurface)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = Muted)
-        }
-    }
-}
 
 // ── Legend dot ────────────────────────────────────────────────────────────────
 @Composable

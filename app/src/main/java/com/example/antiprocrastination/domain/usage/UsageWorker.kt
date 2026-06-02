@@ -1,28 +1,29 @@
-package com.example.antiprocrastination.usage
+package com.example.antiprocrastination.domain.usage
 
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.ListenableWorker.Result
-import com.example.antiprocrastination.model.AppDatabase
-import com.example.antiprocrastination.data.SettingsManager
-import com.example.antiprocrastination.notifications.NotificationHelper
+import com.example.antiprocrastination.data.AppDatabase
+import com.example.antiprocrastination.data.SettingsManagerImpl
+import com.example.antiprocrastination.data.UsageTrackerImpl
+import com.example.antiprocrastination.domain.model.DistractionApp
+import com.example.antiprocrastination.domain.notifications.NotificationHelper
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
 class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    private val usageTracker = UsageTracker(context)
+    private val usageTrackerImpl = UsageTrackerImpl(context)
     private val notificationHelper = NotificationHelper(context)
     private val database = AppDatabase.getDatabase(context)
-    private val settingsManager = SettingsManager(context)
+    private val settingsManagerImpl = SettingsManagerImpl(context)
 
     override suspend fun doWork(): Result {
-        if (!settingsManager.notificationsEnabled) return Result.success()
+        if (!settingsManagerImpl.notificationsEnabled) return Result.success()
 
         // 1. Obtener la app que está actualmente en pantalla (foreground)
-        val currentPackage = usageTracker.getForegroundPackage() ?: run {
+        val currentPackage = usageTrackerImpl.getForegroundPackage() ?: run {
             Log.d("Antiprocrastination", "No se detectó ninguna app en primer plano")
             return Result.success()
         }
@@ -38,7 +39,7 @@ class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         // 3. Verificar si la app en primer plano es una distracción
         val distractionDao = database.distractionDao()
         val isLearned = distractionDao.isLearnedDistraction(currentPackage)
-        val isDistraction = isLearned || usageTracker.isDistraction(currentPackage)
+        val isDistraction = isLearned || usageTrackerImpl.isDistraction(currentPackage)
         
         Log.d("Antiprocrastination", "¿Es distracción? $isDistraction (Learned: $isLearned) para $currentPackage")
 
@@ -46,16 +47,16 @@ class UsageWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             // Guardar en la base de datos de "aprendidas" si no estaba
             if (!isLearned) {
                 distractionDao.insertDistraction(
-                    com.example.antiprocrastination.model.DistractionApp(
+                    DistractionApp(
                         packageName = currentPackage,
-                        appName = usageTracker.getAppName(currentPackage)
+                        appName = usageTrackerImpl.getAppName(currentPackage)
                     )
                 )
                 Log.d("Antiprocrastination", "Nueva app de distracción guardada: $currentPackage")
             }
             // Usamos el nombre amigable centralizado
-            val appName = usageTracker.getAppName(currentPackage)
-            val sessionMinutes = usageTracker.getActiveSessionMinutes(currentPackage)
+            val appName = usageTrackerImpl.getAppName(currentPackage)
+            val sessionMinutes = usageTrackerImpl.getActiveSessionMinutes(currentPackage)
 
             // 1. Siempre mostrar la notificación de tiempo en la app (Notificación Tipo 1)
             notificationHelper.showSimpleNotification(

@@ -1,6 +1,7 @@
-package com.example.antiprocrastination.model
+package com.example.antiprocrastination.data
 
 import androidx.room.*
+import com.example.antiprocrastination.domain.model.Task
 import kotlinx.coroutines.flow.Flow
 
 @Dao

@@ -20,10 +20,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
-import com.example.antiprocrastination.model.AppUsageInfo
-import com.example.antiprocrastination.navigation.Routes
+import com.example.antiprocrastination.domain.model.AppUsageInfo
+import com.example.antiprocrastination.ui.navigation.Routes
 import com.example.antiprocrastination.ui.theme.*
-import com.example.antiprocrastination.viewmodel.AppViewModel
+import com.example.antiprocrastination.ui.viewmodel.AppViewModel
 
 // Colours assigned to each app slice
 private val sliceColors = listOf(
