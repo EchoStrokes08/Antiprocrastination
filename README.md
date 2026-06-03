@@ -203,7 +203,7 @@ Más allá de una lista fija, la app detecta nuevas aplicaciones de distracción
 
 ```bash
 # Clonar el repositorio
-git clone [URL_DEL_REPOSITORIO]
+git clone https://github.com/EchoStrokes08/Antiprocrastination
 
 # Abrir en Android Studio y sincronizar Gradle,
 # o compilar el APK desde la terminal:
@@ -216,13 +216,13 @@ El APK generado queda en `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Distribución del trabajo
 
-| Integrante | Contribución |
-|---|---|
-| **O. González** | [Completar: p. ej. capa de datos, rastreo de uso, monitoreo en segundo plano] |
-| **J. Bernal** | [Completar: p. ej. interfaz Compose, ViewModel, servicio REST, idiomas] |
+| Integrante            | Contribución |
+|-----------------------|---|
+| **Oscar González**    | [Completar: p. ej. capa de datos, rastreo de uso, monitoreo en segundo plano] |
+| **Jonathan   Bernal** | [Completar: p. ej. interfaz Compose, ViewModel, servicio REST, idiomas] |
 
 ---
 
 ## Repositorio
 
-**Código fuente y APK:** [PEGAR_AQUÍ_EL_LINK_DEL_REPOSITORIO]
+**Código fuente y APK:** https://github.com/EchoStrokes08/Antiprocrastination
