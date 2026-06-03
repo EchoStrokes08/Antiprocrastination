@@ -16,7 +16,7 @@ data class Task(
     val description: String = "",
     val completed: Boolean = false,
     val completedDate: LocalDate? = null
-) {
+)  {
     /** Days remaining until due date (negative = overdue) */
     val daysRemaining: Long get() = ChronoUnit.DAYS.between(LocalDate.now(), dueDate)
 }
