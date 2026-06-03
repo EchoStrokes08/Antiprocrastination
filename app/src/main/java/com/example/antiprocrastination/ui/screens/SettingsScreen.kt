@@ -12,11 +12,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.antiprocrastination.R
 import com.example.antiprocrastination.ui.theme.*
 import com.example.antiprocrastination.ui.viewmodel.AppViewModel
+import com.example.antiprocrastination.ui.components.settings.LanguageSelector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +32,7 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
     val appUsages             by viewModel.appUsages.collectAsState()
     val learnedDistractions   by viewModel.learnedDistractions.collectAsState()
 
-    // Tomamos las 3 más usadas
+    // Tomamos las 3 mas usadas
     val topApps = remember(appUsages) {
         appUsages.sortedByDescending { it.usageMinutes }.take(3)
     }
@@ -38,7 +41,8 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Settings", style = MaterialTheme.typography.titleLarge,
+                    Text(stringResource(R.string.settings_title),
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
@@ -63,11 +67,11 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Notifications ─────────────────────────────────────────────────
-            SettingsSection(title = "Notifications", icon = Icons.Filled.Notifications) {
+            // -- Notifications --
+            SettingsSection(title = stringResource(R.string.notifications), icon = Icons.Filled.Notifications) {
                 SwitchSettingRow(
-                    label    = "Enable notifications",
-                    subLabel = "Get alerted when you exceed app limits",
+                    label    = stringResource(R.string.enable_notifications),
+                    subLabel = stringResource(R.string.enable_notifications_desc),
                     checked  = notificationsEnabled,
                     onToggle = { viewModel.setNotificationsEnabled(it) }
                 )
@@ -82,16 +86,16 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                 }
             }
 
-            // ── App limits ────────────────────────────────────────────────────
-            SettingsSection(title = "App Time Limits", icon = Icons.Filled.Timelapse) {
+            // -- App limits --
+            SettingsSection(title = stringResource(R.string.app_time_limits), icon = Icons.Filled.Timelapse) {
                 StepperSettingRow(
                     label    = "Intervalo de monitoreo",
-                    subLabel = "Frecuencia de revisión (mín 1m)",
+                    subLabel = "Frecuencia de revision (min 1m)",
                     onMinus  = { if (scanInterval > 1) viewModel.setMonitoringInterval(scanInterval - 1) },
                     onPlus   = { if (scanInterval < 60) viewModel.setMonitoringInterval(scanInterval + 1) },
                     value    = "${scanInterval}m"
                 )
-                
+
                 if (topApps.isNotEmpty()) {
                     Text(
                         "Top Apps Usadas",
@@ -99,11 +103,11 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                         color = Primary,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-                    
+
                     topApps.forEachIndexed { index, app ->
                         StepperSettingRow(
                             label    = app.appName,
-                            subLabel = "Límite diario (Uso actual: ${app.usageMinutes}m)",
+                            subLabel = "Limite diario (Uso actual: ${app.usageMinutes}m)",
                             onMinus  = { if (app.limitMinutes > 5) viewModel.setAppLimit(app.packageName, app.limitMinutes - 5) },
                             onPlus   = { viewModel.setAppLimit(app.packageName, app.limitMinutes + 5) },
                             value    = "${app.limitMinutes}m"
@@ -114,7 +118,7 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                     }
                 } else {
                     Text(
-                        "No se detectaron apps de distracción hoy",
+                        "No se detectaron apps de distraccion hoy",
                         style = MaterialTheme.typography.bodySmall,
                         color = Muted,
                         modifier = Modifier.padding(16.dp)
@@ -122,8 +126,8 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                 }
             }
 
-            // ── Learned Distractions ──────────────────────────────────────────
-            SettingsSection(title = "Learned Distractions", icon = Icons.Filled.Psychology) {
+            // -- Learned Distractions --
+            SettingsSection(title = stringResource(R.string.learned_distractions), icon = Icons.Filled.Psychology) {
                 if (learnedDistractions.isEmpty()) {
                     Text(
                         "No learned apps yet",
@@ -154,21 +158,26 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavController) {
                 }
             }
 
-            // ── About ─────────────────────────────────────────────────────────
-            SettingsSection(title = "About", icon = Icons.Filled.Info) {
-                InfoRow("Version",  "1.0.1 – Learning System")
+            // -- Language --
+            SettingsSection(title = stringResource(R.string.language), icon = Icons.Filled.Language) {
+                LanguageSelector()
+            }
+
+            // -- About --
+            SettingsSection(title = stringResource(R.string.about), icon = Icons.Filled.Info) {
+                InfoRow("Version",  "1.0.1 - Learning System")
                 HorizontalDivider(color = SurfaceVar)
-                InfoRow("Authors",  "O. González · J. Bernal")
+                InfoRow("Authors",  "O. Gonzalez . J. Bernal")
                 HorizontalDivider(color = SurfaceVar)
                 InfoRow("Course",   "Technology in Data Systemization")
                 HorizontalDivider(color = SurfaceVar)
-                InfoRow("Professor","J. E. Hernández Rodríguez")
+                InfoRow("Professor","J. E. Hernandez Rodriguez")
             }
         }
     }
 }
 
-// ── Section wrapper ────────────────────────────────────────────────────────────
+// -- Section wrapper --
 @Composable
 private fun SettingsSection(
     title: String,
@@ -197,7 +206,7 @@ private fun SettingsSection(
     }
 }
 
-// ── Switch row ────────────────────────────────────────────────────────────────
+// -- Switch row --
 @Composable
 private fun SwitchSettingRow(
     label: String,
@@ -225,7 +234,7 @@ private fun SwitchSettingRow(
     }
 }
 
-// ── Stepper row ───────────────────────────────────────────────────────────────
+// -- Stepper row --
 @Composable
 private fun StepperSettingRow(
     label: String,
@@ -262,7 +271,7 @@ private fun StepperSettingRow(
     }
 }
 
-// ── Info row ──────────────────────────────────────────────────────────────────
+// -- Info row --
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(
