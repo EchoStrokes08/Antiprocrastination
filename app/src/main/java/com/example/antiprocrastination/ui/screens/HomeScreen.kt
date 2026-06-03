@@ -38,11 +38,13 @@ private val sliceColors = listOf(
 @Composable
 fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
     val appUsages by viewModel.appUsages.collectAsState()
+    val motivationalQuote by viewModel.motivationalQuote.collectAsState()
     val totalMinutes = appUsages.sumOf { it.usageMinutes }.coerceAtLeast(1)
 
     // Actualizar datos al entrar a la pantalla
     LaunchedEffect(Unit) {
         viewModel.refreshUsageStats()
+        viewModel.loadMotivationalQuote()
     }
 
     Scaffold(
@@ -85,6 +87,18 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                         modifier            = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = motivationalQuote,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
                         Text(
                             "Most Used Applications",
                             style      = MaterialTheme.typography.titleMedium,
@@ -110,6 +124,8 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                     }
                 }
             }
+
+
 
             // ── App list ──────────────────────────────────────────────────────
             item {

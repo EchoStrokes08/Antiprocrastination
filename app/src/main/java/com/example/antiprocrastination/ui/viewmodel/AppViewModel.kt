@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import com.example.antiprocrastination.domain.repository.QuoteRepository
+import com.example.antiprocrastination.domain.repository.QuoteResult
 
 /**
  * ViewModel principal de la aplicación.
@@ -40,6 +42,24 @@ class AppViewModel(
     fun setMonitoringInterval(minutes: Int) {
         _monitoringInterval.value = minutes
         settingsRepository.monitoringInterval = minutes
+    }
+
+
+    // ── Servicio REST: frase motivacional ─────────────────────────────────────
+    private val quoteRepository = QuoteRepository()
+
+    private val _motivationalQuote = MutableStateFlow("Cargando frase...")
+    val motivationalQuote: StateFlow<String> = _motivationalQuote.asStateFlow()
+
+    fun loadMotivationalQuote() {
+        viewModelScope.launch {
+            when (val result = quoteRepository.getMotivationalQuote()) {
+                is QuoteResult.Success ->
+                    _motivationalQuote.value = "\"${result.quote}\" — ${result.author}"
+                is QuoteResult.Error ->
+                    _motivationalQuote.value = "Mantente enfocado hoy."  // fallback si falla la red
+            }
+        }
     }
 
     private val _notificationsEnabled = MutableStateFlow(settingsRepository.notificationsEnabled)
